@@ -1,0 +1,46 @@
+#! /bin/sh 
+# Re-point the apt-cache proxy if the gateway is recognized
+# Run from /etc/NetworkManager/dispatcher.d/01-ifupdown
+# and lives both /etc/network/if-{up,post-down}.d 
+
+# Vet our arguments for something we can work with
+if [ -z "$IFACE" ] || [ -z "$MODE" ] || [ "$IFACE" = lo ] || [ "$IFACE" = \-all ]; then
+	echo "$0: IFACE \"$IFACE\" or MODE \"$MODE\" is not for us"
+	exit 0
+fi
+
+if [ "$MODE" != stop ] && [ "$MODE" != start ]; then
+	echo "$0: MODE \"$MODE\" is not for us"
+	exit 0
+fi
+
+echo "$0: MODE \"$MODE\" IFACE \"$IFACE\" GORD ***********" 1>&2
+
+APT_DIR="/etc/apt"
+APT_CACHE="02apt-cache"
+MY_GATEWAY="mia"
+
+set -x
+# When we go down, we know nothing, so re-install the cacher default file
+if [ "$MODE" = stop ]; then
+	MY_CONF=$APT_DIR/$APT_CACHE-$MY_GATEWAY
+fi
+
+# we need to be configuring an ip address and gateway otherwise we mia the cacher file
+if [ "$MODE" = start ]; then
+	if [ "$ADDRFAM" = inet ]; then
+		# if there is an address, then there is a gateway
+		if [ -n "$IP4_NUM_ADDRESSES" ] && [ "$IP4_NUM_ADDRESSES" -gt 0 ] && [ -n $IP4_GATEWAY ]; then
+			MY_CONF=$APT_DIR/$APT_CACHE-$IP4_GATEWAY
+		fi
+	fi
+fi
+
+# use an existing matching cacher file 
+if [ -n "$MY_CONF" ] && [ -f $MY_CONF ]; then
+	echo "$0: changing $APT_CACHE to be the same as $MY_CONF" 1>&2
+	APT_TARGET=$APT_DIR/apt.conf.d/$APT_CACHE
+	/bin/cat $MY_CONF > $APT_TARGET
+fi
+
+exit 0
