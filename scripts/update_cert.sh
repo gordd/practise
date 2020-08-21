@@ -70,5 +70,4 @@ if [ -e ${FULLCHAIN} ]; then
 	/usr/sbin/service dovecot restart
 fi
 
-	service dovecot restart
 exit 0
